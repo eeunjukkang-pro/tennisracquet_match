@@ -1,0 +1,990 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+/* 웹사이트 전체 글자 선택(드래그) 방지 */
+body {
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none;    /* Firefox */
+  -ms-user-select: none;     /* IE10+/Edge */
+  user-select: none;         /* 표준 */
+}
+
+/* 입력창(input)과 텍스트 상자(textarea)는 글자를 쓰고 선택해야 하므로 예외 처리 */
+input, textarea {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* General Page Layout */
+.page {
+  display: grid;
+  grid-template-columns: 380px 1fr 400px;
+  width: 100vw;
+  height: 100vh;
+  padding: 1rem;
+  gap: 1rem;
+  box-sizing: border-box;
+  overflow: hidden;
+  background-color: #f0f0f0;
+  font-family: 'Inter', sans-serif;
+  user-select: none;
+}
+
+/* Left Sidebar: Controls */
+#controls {
+  background-color: #ffffff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+#controls h3 { margin: 0 0 0.1rem 0; font-size: 1.2rem; color: #343a40; }
+#controls p { font-size: 0.7rem; color: #6c757d; margin: 0 0 1.5rem 0; }
+#controls label { font-size: 0.75rem; font-weight: 600; color: #495057; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; }
+#controls .value-label { font-weight: 400; color: #343333; background-color: #e0e0e0; padding: 0.2rem 0.5rem; border-radius: 4px; }
+
+.segmented-control {
+  display: flex;
+  width: 97%;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  padding: 4px;
+  margin-top: -0.2rem;
+}
+
+.segment-button { flex-grow: 1; padding: 0.5rem 0.25rem; border: none; background-color: transparent; cursor: pointer; font-size: 0.75rem; color: #6c757d; font-weight: 600; border-radius: 6px; transition: all 0.2s ease-in-out; }
+.segment-button.active { background-color: #ffffff; color: #343333; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); font-weight: 700; }
+
+.multi-brand-selector {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: -0.2rem;
+  background-color: #f0f0f0;
+  padding: 4px;
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.brand-select-button { padding: 0.5rem 0.25rem; border: none; background-color: transparent; cursor: pointer; font-size: 0.6rem; color: #6c757d; font-weight: 600; border-radius: 6px; transition: all 0.2s ease-in-out; text-align: center; }
+.brand-select-button:hover { background-color: #e0e0e0; }
+.brand-select-button.active { background-color: #ffffff; color: #343333; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); font-weight: 700; }
+
+#specZoneSummary { background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+#specZoneSummary h4 { margin: 0 0 0.75rem 0; font-size: 1rem; color: #343a40; border-bottom: 1px solid #dee2e6; padding-bottom: 0.5rem; }
+#specZoneSummary #specZoneBody { font-size: 0.875rem; color: #495057; line-height: 1.6; }
+
+/* Main Content Area */
+.main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 1.5rem;
+  background-color: #ffffff;
+  border-radius: 12px;
+}
+
+#titleBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 1rem;
+}
+
+#titleBar h1 { font-size: 2rem; margin: 0; line-height: 1.2; color: #212529; font-weight: 800; }
+#titleBar span { color: #6c757d; font-size: 0.875rem; }
+#matchCountText { background-color: #343a40; color: #ffffff !important; opacity: 1; border: none; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 800; font-size: 1.1rem; white-space: nowrap; }
+
+#chart { flex-grow: 1; min-height: 0; position: relative; user-select: auto !important; }
+
+/* Selection Tooltip (on scatterplot) */
+#selection-tooltip {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 200px;
+  pointer-events: auto; /* Let clicks pass through the container */
+}
+
+.selection-tooltip-item {
+  background-color: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  pointer-events: auto; /* Enable clicks on items */
+}
+
+.selection-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.selection-tooltip-logo-container {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.selection-tooltip-logo {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.selection-tooltip-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.scatterlayer .trace .points path { cursor: pointer !important; }
+
+/* Right Sidebar: Summaries */
+#right-sidebar {
+  background-color: #ffffff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+#topPicksSummary, #mySelections {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+#topPicksSummary h4, #mySelections h4 {
+  margin: 0 0 1rem 0; /* Adjusted margin-bottom for consistent spacing */
+  font-size: 1rem;
+  color: #343a40;
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 0.5rem;
+}
+
+#topPicksBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.top-pick-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  background-color: #ffffff;
+}
+
+.top-pick-card:hover {
+  background-color: #f0f0f0;
+  border-color: #343a40; /* Black-grey tone */
+}
+
+.top-pick-card.active {
+  box-shadow: 0 0 0 2px white, 0 0 0 4px #343a40; /* Black-grey tone */
+  font-weight: 700;
+  background-color: #e9ecef; /* Light grey */
+}
+
+.top-pick-rank {
+  font-size: 1.5rem;
+  font-weight: 900;
+  border-radius: 6px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.top-pick-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.top-pick-details b {
+  font-size: 0.9rem;
+  color: #212529;
+}
+
+.top-pick-details small {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+#mySelectionsBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+#mySelectionsBody p {
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin: 0;
+  padding: 0.5rem 0;
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.selection-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.selection-card:hover {
+  background-color: var(--brand-color);
+  color: var(--brand-text-color);
+  border-color: var(--brand-color);
+}
+
+.selection-card:hover .selection-card-info {
+  color: var(--brand-text-color);
+  opacity: 0.85;
+}
+
+.selection-card-info {
+  font-size: 0.8rem;
+  color: #6c757d;
+  white-space: nowrap;
+  transition: color 0.2s ease-in-out;
+}
+
+.selection-card-logo-container {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.selection-card-logo {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.selection-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.selection-actions button {
+  flex-grow: 1;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin: 0;
+  background-color: #343a40;
+  color: white;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  text-transform: uppercase;
+}
+
+.selection-actions button:hover {
+  background-color: #212529;
+}
+
+.selection-actions button.clear-button {
+  background-color: #ffffff;
+  color: #343a40;
+  border: 1px solid #343a40;
+}
+
+.selection-actions button.clear-button:hover {
+  background-color: #f8f9fa;
+}
+
+/* Brands in Your Zone Section */
+#brandSummary {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1rem 0;
+}
+
+#brandSummary h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: #343a40;
+}
+
+.brand-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #dee2e6;
+  padding: 0 1rem 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.brand-clear-button {
+  padding: 0.4rem 1.0rem;
+  background-color: #ffffff;
+  color: #000000;
+  border: 1px solid #000000;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 700;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+}
+.brand-clear-button:hover {
+  background-color: #f0f0f0;
+}
+
+.brand-clear-button.hidden {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#brandSummaryBody ul {
+  list-style: none;
+  padding: 0 1rem;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+#brandSummaryBody li.brand-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  background-color: #f0f0f0;
+  min-height: 60px;
+}
+
+#brandSummaryBody li.brand-item:not(.active-brand):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+#brandSummaryBody li.active-brand {
+  box-shadow: 0 0 0 2px white, 0 0 0 4px #343a40; /* Black-grey tone */
+  font-weight: 700;
+  background-color: #e9ecef;
+}
+
+.brand-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brand-logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  background-color: transparent;
+  border-radius: 4px;
+  padding: 0;
+}
+
+.badge {
+  width: calc(100% - 1rem);
+  padding: 0.1rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background-color: #000000;
+  color: #ffffff;
+  border: none;
+  margin-top: 0.2rem;
+  text-align: center;
+}
+
+/* Power Slider Specifics */
+.power-slider-container {
+  padding: 0 0 1rem 0;
+}
+
+.power-slider-input {
+  -webkit-appearance: none;
+  width: 100%;
+  background: transparent;
+  margin: 0;
+}
+
+.power-slider-input:focus {
+  outline: none;
+}
+
+.power-slider-input::-webkit-slider-runnable-track {
+  height: 6px;
+  background: #e0e0e0;
+  border-radius: 3px;
+}
+
+.power-slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 16px;
+  width: 16px;
+  background-color: #ffffff;
+  border: 2px solid #343a40; /* Black-grey tone */
+  border-radius: 50%;
+  margin-top: -5px;
+  cursor: grab;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.power-slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #6c757d;
+  padding: 0 0.5rem;
+  margin-top: 0.25rem;
+}
+
+/* Custom Range Slider Styles */
+.range-slider-container {
+  padding: 0 0 1rem 0;
+  position: relative;
+}
+
+.range-slider-track {
+  position: relative;
+  height: 6px;
+  background-color: #e0e0e0;
+  border-radius: 3px;
+  margin: 0 6px;
+}
+
+.range-slider-range {
+  position: absolute;
+  height: 100%;
+  background-color: #343333;
+  border-radius: 3px;
+}
+
+.range-slider-handle {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  background-color: #ffffff;
+  border: 1px solid #343333;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  z-index: 2;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.range-slider-handle:active {
+  cursor: grabbing;
+  box-shadow: 0 0 0 3px rgba(52, 51, 51, 0.2);
+}
+
+.comparison-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: transparent;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+/* New Styles for Radar Chart & Table View */
+#comparison-container {
+  position: fixed;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  pointer-events: auto;
+  transition: all 0.3s ease-out;
+  box-sizing: border-box;
+  overflow-y: auto; /* Enable scrolling for the whole modal */
+}
+
+.comparison-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem; /* Added margin for spacing */
+}
+
+#comparison-container h4 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.comparison-back-button {
+  padding: 0.5rem 1rem;
+  background-color: #e9ecef;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.comparison-back-button:hover {
+  background-color: #dee2e6;
+}
+
+.comparison-racket-headers {
+  display: flex;
+  justify-content: space-around;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e9ecef;
+  flex-shrink: 0;
+  margin-bottom: 1rem; /* Added margin for spacing */
+}
+
+.racket-header-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-basis: 0;
+  flex-grow: 1;
+  background-color: #ffffff;
+  padding: 12px;
+  border-radius: 8px;
+  border-top: 4px solid; /* Color will be set inline */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.header-logo-container {
+  width: 45px;
+  height: 45px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.header-logo-container img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.header-brand-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header-brand-name {
+  font-weight: 700;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.header-model-name {
+  font-size: 0.8rem;
+  color: #6c7c8a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.comparison-content-split {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex-shrink: 0; /* Prevent sections from shrinking */
+}
+
+.chart-section {
+  min-height: 400px; /* Give chart enough space */
+}
+
+.specs-table-container {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+}
+
+.specs-table-header {
+  display: grid;
+  grid-template-columns: 120px repeat(3, 1fr);
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid #dee2e6;
+  background-color: #f8f9fa;
+}
+
+.spec-value-header {
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.specs-table-row {
+  display: grid;
+  grid-template-columns: 120px repeat(3, 1fr);
+  gap: 1rem;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.specs-table-row:last-child {
+  border-bottom: none;
+}
+
+.spec-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #495057;
+}
+
+.spec-value {
+  font-size: 0.9rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* --- Comparison brand/color cards above radar --- */
+.comparison-racket-headers {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  margin-bottom: 0.5rem;
+}
+
+.comparison-racket-headers.two {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.comparison-racket-headers.three {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* 컬러 박스 카드화 */
+.racket-header-item.color-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 10px;
+  padding: 0.75rem 0.7rem;
+  background-color: var(--brand-color);
+  color: var(--brand-text-color);
+  border: 1px solid transparent;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+/* 로고 컨테이너는 카드 안에서만 보이게 */
+.racket-header-item.color-card .header-logo-container {
+  width: 50px;
+  height: 50px;
+  border-radius: 6px;
+  background-color: rgba(255,255,255,0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.racket-header-item.color-card .header-logo-container img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+}
+
+/* 텍스트 컬러 통일 */
+.racket-header-item.color-card .header-brand-name,
+.racket-header-item.color-card .header-model-name {
+  color: var(--brand-text-color);
+}
+
+.racket-header-item.color-card .header-model-name {
+  opacity: 0.85;
+}
+
+/* 차트 섹션이 카드 아래에서 여유 있게 시작 */
+.chart-section {
+  margin-top: 0.25rem;
+}
+
+/* ===== Brand column band style for comparison table ===== */
+
+.specs-table-container.band-cols {
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* 카드형 row 느낌 제거 → 밴드형으로 */
+.specs-table-header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e9ecef;
+  padding: 0.6rem 0.9rem;
+}
+
+.specs-table-row {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #e9ecef;
+  border-radius: 0;
+  margin: 0;
+  padding: 0.6rem 0.9rem;
+}
+
+.specs-table-row:last-child {
+  border-bottom: none;
+}
+
+/* 라벨 컬럼은 기본 */
+.spec-label {
+  background: transparent;
+}
+
+/* 브랜드 컬럼 밴드 셀 */
+.brand-col-header,
+.brand-col-cell {
+  border-radius: 0;
+  padding: 0.25rem 0.25rem;
+}
+
+/* 헤더 강조 */
+.brand-col-header {
+  font-size: 1.0rem;
+  font-weight: 800;
+  color: #000000;
+}
+
+/* 값 셀 */
+.brand-col-cell {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #000000;
+}
+
+/* 컬럼 밴드가 끊겨 보이지 않도록 gap 최소화 */
+.specs-table-header,
+.specs-table-row {
+  gap: 0.5rem;
+}
+
+/* ===== Long vertical BRAND COLOR FILLS (no outline) ===== */
+
+.specs-table-container.band-cols {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid #636363;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* ✅ 브랜드 컬러 세로 fill 레이어 */
+.brand-fill-layer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  z-index: 0;
+  pointer-events: none;
+
+  /* 컬럼 사이 틈 */
+  gap: 0.5rem;
+
+  /* rows padding과 시각적으로 맞추기 */
+  padding: 0 0.9rem;
+}
+
+/* 라벨 컬럼 영역 */
+.label-band {
+  background: transparent;
+}
+
+/* ✅ 2개/3개 모두 자동으로 길게 이어지는 컬러 박스 */
+.brand-fill {
+  height: 100%;
+  border-radius: 6px;
+  opacity: 0.5; /* 요청: 50% */
+}
+
+/* ✅ 텍스트/표는 컬러 fill 위로 */
+.specs-table-body,
+.specs-table-row {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+/* 행 구분선만 유지 */
+.specs-table-row {
+  border: none;
+  border-bottom: 0px solid #e9ecef;
+  border-radius: 0;
+  margin: 0;
+  padding: 0.6rem 0.9rem;
+}
+
+.specs-table-row:last-child {
+  border-bottom: none;
+}
+
+/* 값/헤더 텍스트 중앙 정렬 유지 */
+.spec-value {
+  text-align: center;
+}
+
+/* 혹시 남아 있는 '선만 있는 박스' 스타일 무력화(안전장치) */
+.brand-band-layer,
+.brand-band {
+  display: none !important;
+}
+
+/* 카드가 칸 안에서만 줄어들게 */
+.racket-header-item.color-card {
+  box-sizing: border-box;
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  background: var(--brand-color);
+  color: var(--brand-text-color);
+}
+
+/* 텍스트가 줄어들 수 있게 */
+.header-brand-info {
+  min-width: 0;
+}
+
+.header-brand-name,
+.header-model-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ✅ 2/3개 모두 자동 폰트 스케일 */
+.header-brand-name {
+  font-size: clamp(0.9rem, 1.1vw, 1.15rem);
+  font-weight: 800;
+}
+
+.header-model-name {
+  font-size: clamp(0.75rem, 0.95vw, 0.95rem);
+}
+
+/* 텍스트 영역 overflow 안전장치 */
+.header-brand-info {
+  min-width: 0;
+}
+
+.header-brand-name,
+.header-model-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =========================
+   FIX: 비교창 상단 카드 여백 통일
+   - 카드 사이 gap
+   - 좌/우 바깥 여백 = gap
+========================= */
+
+.comparison-racket-headers {
+  --header-gap: 10px;             /* 원하는 여백 값 */
+  display: grid !important;
+  gap: var(--header-gap) !important;
+  padding: 0 var(--header-gap) !important;  /* ⭐ 바깥 여백을 gap과 동일하게 */
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.comparison-racket-headers.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.comparison-racket-headers.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.racket-header-item.color-card {
+  width: 100%;
+  min-width: 0;
+}
+
+
+.custom-axis-label {
+  position: absolute;
+  background-color: #cacaca;
+  color: #ffffff;
+  padding: 0.3rem 0.8rem;
+  border-radius: 5px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  z-index: 1;
+  pointer-events: none;
+}
+.custom-xaxis-label { bottom: 3px; right: 18px; left: auto; transform: none; }
+.custom-yaxis-label { top: 11%; left: -50px; transform: translateY(-50%) rotate(-90deg); }
