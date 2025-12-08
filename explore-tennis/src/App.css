@@ -524,6 +524,14 @@ input, textarea {
   gap: 0.5rem;
 }
 
+#brandSummaryBody .empty-state-message {
+  font-size: 0.75rem;
+  color: #6c757d;
+  text-align: center;
+  margin-top: 1rem;
+  padding: 0.5rem 0;
+}
+
 #brandSummaryBody li.brand-item {
   display: flex;
   flex-direction: column;
@@ -1219,6 +1227,21 @@ input, textarea {
   font-size: 0.6rem;
   text-align: left;
   padding: 0; /* Remove overall padding from tooltip to allow children to control it */
+}
+
+/* Custom Scrollbar for Match Summary Tooltip */
+#match-summary-tooltip::-webkit-scrollbar {
+  width: 6px;
+  background-color: transparent;
+}
+
+#match-summary-tooltip::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+#match-summary-tooltip:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3);
 }
 
 #match-summary-tooltip::before {

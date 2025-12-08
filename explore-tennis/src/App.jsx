@@ -870,7 +870,7 @@ useEffect(() => {
                   );
                 })}
               </ul>
-            ) : ( 'Adjust filters to find matching rackets.' )}
+            ) : ( <p className="empty-state-message">Adjust filters to find matching rackets.</p> )}
           </div>
         </div>
       </div>
