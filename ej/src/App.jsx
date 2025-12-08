@@ -143,7 +143,40 @@ const BRAND_LOGOS = {
 };
 
 const RacketComparison = ({ rackets = [], onExit, chartRect, specRanges }) => {
+  const [selectedSpecKey, setSelectedSpecKey] = useState(null);
+  const specRowRefs = useRef({});
+
+  useEffect(() => {
+    console.log(`useEffect triggered for spec: ${selectedSpecKey}`);
+    if (selectedSpecKey && specRowRefs.current[selectedSpecKey]) {
+      console.log('Ref found, scrolling to:', specRowRefs.current[selectedSpecKey]);
+      specRowRefs.current[selectedSpecKey].scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    } else {
+      console.log('Ref not found for key:', selectedSpecKey);
+    }
+  }, [selectedSpecKey]);
+
   if (!rackets || rackets.length === 0) return null;
+
+  const handleRadarClick = (e) => {
+    if (e.points.length > 0) {
+      let pointIndex = e.points[0].pointNumber;
+      
+      // Handle the closed loop: the last point is the same as the first.
+      if (pointIndex === specs.length) {
+        pointIndex = 0;
+      }
+
+      if (pointIndex < specs.length) {
+        const key = specs[pointIndex].key;
+        console.log(`Clicked point index: ${pointIndex}, setting spec key to: ${key}`);
+        setSelectedSpecKey(prev => prev === key ? null : key);
+      }
+    }
+  };
 
   const specs = [
     { label: "Price", key: "price_num", suffix: " $" },
@@ -192,40 +225,74 @@ const RacketComparison = ({ rackets = [], onExit, chartRect, specRanges }) => {
   // Radar chart data (safe normalization)
   const radarIndicators = specs.map((s) => s.label);
 
-  const radarTraces = showRackets.map((r) => {
-    const values = specs.map((s) => {
+  const handleSpecRowClick = (key) => {
+    setSelectedSpecKey(prev => (prev === key ? null : key));
+  };
+
+  const radarTraces = showRackets.flatMap((r) => {
+    const brandColor = BRAND_COLORS[r.brand] || BRAND_COLORS.Default;
+    const valuesWithRaw = specs.map((s) => {
       const v = Number(r[s.key]);
       const range = specRanges?.[s.key];
 
-      if (!range || Number.isNaN(v)) return 0;
+      if (!range || Number.isNaN(v)) return { normalized: 0, raw: v, label: s.label, suffix: s.suffix || '' };
 
       const min = Number(range.min ?? 0);
       const max = Number(range.max ?? 1);
       const denom = max - min;
 
-      if (denom <= 0) return 0;
-
-      const nv = (v - min) / denom;
-      return Math.max(0, Math.min(1, nv));
+      const nv = (denom <= 0) ? 0 : (v - min) / denom;
+      return { normalized: Math.max(0, Math.min(1, nv)), raw: v, label: s.label, suffix: s.suffix || '' };
     });
 
-    const rVals = [...values, values[0]];
+    const rVals = [...valuesWithRaw.map(v => v.normalized), valuesWithRaw[0].normalized];
     const theta = [...radarIndicators, radarIndicators[0]];
+    const textVals = [...valuesWithRaw.map(v => `${v.label}: ${v.raw}${v.suffix}`), `${valuesWithRaw[0].label}: ${valuesWithRaw[0].raw}${valuesWithRaw[0].suffix}`];
+    
+    const selectedSpecIndex = selectedSpecKey ? specs.findIndex(s => s.key === selectedSpecKey) : -1;
+    const markerSizes = new Array(rVals.length).fill(8);
+    if (selectedSpecIndex !== -1) {
+      markerSizes[selectedSpecIndex] = 16;
+      if (selectedSpecIndex === 0) {
+        markerSizes[specs.length] = 16;
+      }
+    }
 
-    return {
+    // Main trace for lines and fill (no hover)
+    const mainTrace = {
       type: "scatterpolar",
       r: rVals,
       theta,
-      fill: "toself",
+      fill: "none",
       name: `${r.brand} ${r.model_name}`,
-      line: { color: BRAND_COLORS[r.brand] || BRAND_COLORS.Default, width: 2 },
-      hovertemplate: "<extra></extra>",
+      line: { color: brandColor, width: 2 },
+      hoverinfo: 'none',
+      pointerevents: 'none',
     };
+
+    // Hover trace for points and tooltips
+    const hoverTrace = {
+      type: "scatterpolar",
+      r: rVals,
+      theta,
+      mode: 'markers',
+      name: `${r.brand} ${r.model_name}`,
+      text: textVals,
+      hovertemplate: '%{text}<extra></extra>',
+      hoverinfo: 'text',
+      marker: {
+        color: brandColor,
+        size: markerSizes,
+      },
+      classname: `trace-hover-${r.id}`
+    };
+    
+    return [mainTrace, hoverTrace];
   });
 
   const radarLayout = {
     showlegend: false,
-    margin: { t: 10, r: 10, b: 10, l: 10 },
+    margin: { t: 40, r: 10, b: 40, l: 10 },
     paper_bgcolor: "#ffffff",
     polar: {
       bgcolor: "#ffffff",
@@ -240,6 +307,8 @@ const RacketComparison = ({ rackets = [], onExit, chartRect, specRanges }) => {
         tickfont: { size: 10 },
       },
     },
+    dragmode: false, // Disable rotation
+    hovermode: 'closest', // Enable hover on closest point
   };
 
   // ✅ 선택 개수에 맞춘 테이블 그리드
@@ -251,8 +320,7 @@ const RacketComparison = ({ rackets = [], onExit, chartRect, specRanges }) => {
     <div id="comparison-container" style={comparisonStyle}>
       <div className="comparison-header">
         <h4>RACQUET COMPARISON</h4>
-        <button onClick={onExit} className="comparison-back-button">
-          BACK
+        <button onClick={onExit} className="comparison-back-button close-button">
         </button>
       </div>
 
@@ -291,9 +359,10 @@ const RacketComparison = ({ rackets = [], onExit, chartRect, specRanges }) => {
           <Plot
             data={radarTraces}
             layout={radarLayout}
-            config={{ displayModeBar: false, responsive: true }}
-            style={{ width: "100%", height: "360px" }}
+            config={{ displayModeBar: false, responsive: true, scrollZoom: false }}
+            style={{ width: "100%", height: "400px" }}
             useResizeHandler
+            onClick={handleRadarClick}
           />
         </div>
 
@@ -317,8 +386,24 @@ const RacketComparison = ({ rackets = [], onExit, chartRect, specRanges }) => {
 
     {/* ✅ 브랜드명 헤더 제거하고 스펙 rows만 */}
     <div className="specs-table-body">
+      {/* New Header Row for Brand and Model Names */}
+      <div className="specs-table-header" style={colStyle}>
+        <div className="spec-label"></div> {/* Empty corner for alignment */}
+        {showRackets.map((r) => (
+          <div key={r.id} className="spec-value brand-model-header">
+            <b>{r.brand}</b><br/>{r.model_name}
+          </div>
+        ))}
+      </div>
+
       {specs.map((s) => (
-        <div key={s.key} className="specs-table-row" style={colStyle}>
+        <div 
+          key={s.key} 
+          className={`specs-table-row ${s.key === selectedSpecKey ? 'active-spec' : ''}`} 
+          style={colStyle}
+                  ref={(el) => (specRowRefs.current[s.key] = el)}
+                  onClick={() => handleSpecRowClick(s.key)}
+                >
           <div className="spec-label">{s.label}</div>
 
           {showRackets.map((r) => {
@@ -348,25 +433,60 @@ const RacketComparison = ({ rackets = [], onExit, chartRect, specRanges }) => {
 };
 
 
-const SelectionTooltip = ({ rackets }) => {
+const SelectionTooltip = ({ rackets, onClear }) => {
   if (!rackets || rackets.length === 0) return null;
   return (
     <div id="selection-tooltip">
-      {rackets.map(racket => (
-        <div key={racket.id} className="selection-tooltip-item">
-          <div className="selection-tooltip-header">
-            {BRAND_LOGOS[racket.brand] && (
-              <div className="selection-tooltip-logo-container">
-                <img src={BRAND_LOGOS[racket.brand]} alt={`${racket.brand} logo`} className="selection-tooltip-logo" />
+      <div className="selection-tooltip-main-header">
+        <h4>MY SELECTIONS</h4>
+        <button onClick={onClear} className="tooltip-close-button"></button>
+      </div>
+      {rackets.map(racket => {
+        const brandColor = BRAND_COLORS[racket.brand] || BRAND_COLORS.Default;
+        return (
+          <div key={racket.id} className="selection-tooltip-item">
+            <div className="selection-tooltip-header">
+              {BRAND_LOGOS[racket.brand] && (
+                <div className="selection-tooltip-logo-bg" style={{ backgroundColor: brandColor }}>
+                  <div className="selection-tooltip-logo-container">
+                    <img src={BRAND_LOGOS[racket.brand]} alt={`${racket.brand} logo`} className="selection-tooltip-logo" />
+                  </div>
+                </div>
+              )}
+              <div className="selection-tooltip-brand-info">
+                <b>{racket.brand}</b>
+                <div className="selection-tooltip-body">
+                  <div>{racket.model_name}</div>
+                </div>
               </div>
-            )}
-            <b>{racket.brand}</b>
+            </div>
           </div>
-          <div className="selection-tooltip-body">
-            <div>{racket.model_name}</div>
-          </div>
-        </div>
-      ))}
+        );
+      })}
+    </div>
+  );
+};
+
+const MatchSummaryTooltip = ({ rackets }) => {
+  if (!rackets || rackets.length === 0) return null;
+
+  return (
+    <div id="match-summary-tooltip">
+      <div className="match-summary-header">
+        <strong>Your Matching Racquets</strong>
+      </div>
+      <ul className="match-summary-list">
+        {rackets.map(racket => (
+          <li key={racket.id}>
+            <strong>{racket.brand}</strong> <span className="match-summary-model">{racket.model_name}</span>
+            <div className="match-summary-specs">
+              <span>SW: {racket.swing_weight}</span>
+              <span>Wt: {racket.weight_g}g</span>
+              <span>Flex: {racket.flex_ra}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };
@@ -382,7 +502,8 @@ const App = () => {
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [isComparing, setIsComparing] = useState(false);
   const [chartRect, setChartRect] = useState(null);
-  const mainRef = useRef(null);
+  const chartRef = useRef(null);
+  const [isHoveringMatches, setIsHoveringMatches] = useState(false);
 
   useEffect(() => {
     Papa.parse('/data/tennisRacquets_modeladded2.csv', {
@@ -488,8 +609,8 @@ useEffect(() => {
   };
 
   const handleCompareClick = () => {
-    if (mainRef.current) {
-      setChartRect(mainRef.current.getBoundingClientRect());
+    if (chartRef.current) {
+      setChartRect(chartRef.current.getBoundingClientRect());
     }
     setIsComparing(true);
   };
@@ -556,7 +677,7 @@ useEffect(() => {
       xaxis: { range: [270, 380], gridcolor: '#e0e0e0', linecolor: '#cccccc', tickcolor: '#cccccc', title: { text: '' }, tickfont: { color: '#555555' } },
       yaxis: { range: [250, 350], gridcolor: '#e0e0e0', linecolor: '#cccccc', tickcolor: '#cccccc', title: { text: '' }, tickfont: { color: '#555555' } },
       showlegend: false, shapes: [recommendationZone],
-      margin: { t: 20, r: 20, b: 60, l: 70 }, autosize: true,
+      margin: { t: 20, r: 20, b: 40, l: 40 }, autosize: true,
       dragmode: 'pan', hovermode: 'closest',
       plot_bgcolor: '#ffffff', paper_bgcolor: '#ffffff',
       annotations: []
@@ -634,15 +755,20 @@ useEffect(() => {
           </div>
         </div>
       </div>
-      <div className="main" ref={mainRef}>
+      <div className="main">
         <div id="titleBar">
-          <div><h1>EXPLORE YOUR RACQUET</h1><span>Full dataset from various brands (n={rackets.length}).</span></div>
-          <span id="matchCountText">{plotData.length} MATCHES</span>
+          <div><h1>EXPLORE TENNIS RACQUET</h1><span>Full dataset from various brands (n={rackets.length}).</span></div>
+          <div className="match-count-container" onMouseLeave={() => setIsHoveringMatches(false)}>
+            <span id="matchCountText" onMouseEnter={() => setIsHoveringMatches(true)}>
+              {plotData.length} MATCHES
+            </span>
+            {isHoveringMatches && <MatchSummaryTooltip rackets={plotData} />}
+          </div>
         </div>
-        <div id="chart">
-          <div className="custom-axis-label custom-xaxis-label">SWINGWEIGHT</div>
+        <div id="chart" ref={chartRef}>
+          <div className="custom-axis-label custom-xaxis-label">SWINGWEIGHT (g)</div>
           <div className="custom-axis-label custom-yaxis-label">RACQUET WEIGHT (g)</div>
-          {comparisonRackets.length > 0 && <SelectionTooltip rackets={comparisonRackets} />}
+          {comparisonRackets.length > 0 && <SelectionTooltip rackets={comparisonRackets} onClear={() => setComparisonRackets([])} />}
           <Plot
             data={[
               { type: 'histogram2dcontour', x: rackets.map(r => r.swing_weight), y: rackets.map(r => r.weight_g), colorscale: [['0', 'rgba(240, 240, 240, 0)'], ['1', 'rgba(128, 128, 128, 0.2)']], showscale: false, contours: { coloring: 'heatmap' }, line: { width: 0 }, hoverinfo: 'skip' },
@@ -685,27 +811,33 @@ useEffect(() => {
           </div>
         </div>
         <div id="mySelections">
-          <h4>MY SELECTIONS</h4>
+          <div className="my-selections-header">
+            <h4>COMPARE DETAILS</h4>
+            {comparisonRackets.length > 0 && <button className="clear-button" onClick={() => setComparisonRackets([])}>CLEAR</button>}
+          </div>
           <div id="mySelectionsBody">
             {comparisonRackets.length > 0 ? (
-              comparisonRackets.map(racket => {
-                const brandColor = BRAND_COLORS[racket.brand] || BRAND_COLORS.Default;
-                const textColor = getTextColorForBackground(brandColor);
-                return (
-                  <div key={racket.id} className="selection-card" onClick={() => handleRacketSelect(racket)} style={{ '--brand-color': brandColor, '--brand-text-color': textColor }}>
-                    <div className="selection-card-logo-container" style={{ backgroundColor: brandColor }}>
-                      <img src={BRAND_LOGOS[racket.brand]} alt={`${racket.brand} logo`} className="selection-card-logo" />
+              <div className={`selection-cards-container count-${comparisonRackets.length}`}>
+                {comparisonRackets.map(racket => {
+                  const brandColor = BRAND_COLORS[racket.brand] || BRAND_COLORS.Default;
+                  const textColor = getTextColorForBackground(brandColor);
+                  return (
+                    <div key={racket.id} className="selection-card" onClick={() => handleRacketSelect(racket)} style={{ '--brand-color': brandColor, '--brand-text-color': textColor }}>
+                      <div className="selection-card-logo-container" style={{ backgroundColor: brandColor }}>
+                        <img src={BRAND_LOGOS[racket.brand]} alt={`${racket.brand} logo`} className="selection-card-logo" />
+                      </div>
+                      <div className="selection-card-details">
+                        <span className="selection-card-brand">{racket.brand}</span>
+                        <span className="selection-card-model">{racket.model_name}</span>
+                      </div>
                     </div>
-                    <span className="selection-card-brand">{racket.brand}</span>
-                    <span className="selection-card-info">{racket.swing_weight} / {racket.weight_g}g</span>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             ) : (
               <p>Click on rackets in the plot to select for comparison.</p>
             )}
             <div className="selection-actions">
-              {comparisonRackets.length > 0 && <button className="clear-button" onClick={() => setComparisonRackets([])}>CLEAR</button>}
               {comparisonRackets.length > 1 && <button className="compare-button" onClick={handleCompareClick}>COMPARE</button>}
             </div>
           </div>
@@ -729,7 +861,7 @@ useEffect(() => {
                         ) : (
                           <div className="brand-logo-placeholder" />
                         )}
-                        <span style={{ color: '#000000' }}>{brand}</span>
+                        <span className="brand-name-text" style={{ color: '#000000' }}>{brand}</span>
                       </div>
                       <span className="badge">{count}</span>
                     </li>
