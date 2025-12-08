@@ -585,6 +585,7 @@ input, textarea {
 /* Power Slider Specifics */
 .power-slider-container {
   padding: 0 0 1rem 0;
+  margin-top: -0.5rem;
 }
 
 .power-slider-input {
@@ -621,8 +622,13 @@ input, textarea {
   justify-content: space-between;
   font-size: 0.7rem;
   color: #6c757d;
-  padding: 0 0.5rem;
+  padding: 0;
   margin-top: 0.25rem;
+}
+
+.power-slider-labels span {
+  flex: 0;
+  text-align: center;
 }
 
 /* Custom Range Slider Styles */

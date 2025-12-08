@@ -39,7 +39,7 @@ const SegmentedControl = ({ name, options, selectedValue, onChange }) => {
 
 // New Power Slider Component
 const PowerSlider = ({ value, onChange }) => {
-  const labels = ['Control', 'Control', 'Neutral', 'Power', 'Power'];
+  const labels = ['Control', '', 'Neutral', '', 'Power'];
   return (
     <div className="power-slider-container">
       <input
@@ -743,7 +743,7 @@ useEffect(() => {
         <RangeSlider min={250} max={400} step={5} minValue={prefs.minSwingweight} maxValue={prefs.maxSwingweight} onChange={handleSwingweightChange} />
         <label>RACQUET WEIGHT<span className="value-label">{prefs.minWeight} - {prefs.maxWeight} g</span></label>
         <RangeSlider min={250} max={350} step={5} minValue={prefs.minWeight} maxValue={prefs.maxWeight} onChange={handleWeightChange} />
-        <label>POWER vs CONTROL<span className="value-label">{['Control', 'Control', 'Neutral', 'Power', 'Power'][prefs.powerPref - 1]}</span></label>
+        <label>CONTROL - POWER</label>
         <PowerSlider value={prefs.powerPref} onChange={handlePrefChange} />
         <div id="specZoneSummary">
           <h4>YOUR SPEC ZONE</h4>
