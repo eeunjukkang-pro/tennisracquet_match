@@ -39,7 +39,7 @@ const SegmentedControl = ({ name, options, selectedValue, onChange }) => {
 
 // New Power Slider Component
 const PowerSlider = ({ value, onChange }) => {
-  const labels = ['Control', '', 'Neutral', '', 'Power'];
+  const labels = ['CONTROL', '', '', '', 'POWER'];
   return (
     <div className="power-slider-container">
       <input
@@ -722,6 +722,8 @@ useEffect(() => {
     });
   }, [plotData, top3Rackets, comparisonRackets]);
 
+  const powerPrefLabels = ['Control', 'Low Control', 'Neutral', 'Low Power', 'Power'];
+
   if (loading) return <div className="loading-screen">Loading Racket Data...</div>;
 
   return (
@@ -739,11 +741,11 @@ useEffect(() => {
           selectedBrands={prefs.brandFocuses}
           onBrandClick={handleBrandFocusChange}
         />
-        <label>SWINGWEIGHT<span className="value-label">{prefs.minSwingweight} - {prefs.maxSwingweight}</span></label>
+        <label>SWINGWEIGHT<span className="value-label">{prefs.minSwingweight} - {prefs.maxSwingweight} g</span></label>
         <RangeSlider min={250} max={400} step={5} minValue={prefs.minSwingweight} maxValue={prefs.maxSwingweight} onChange={handleSwingweightChange} />
         <label>RACQUET WEIGHT<span className="value-label">{prefs.minWeight} - {prefs.maxWeight} g</span></label>
         <RangeSlider min={250} max={350} step={5} minValue={prefs.minWeight} maxValue={prefs.maxWeight} onChange={handleWeightChange} />
-        <label>CONTROL - POWER</label>
+        <label>POWER PREFERENCE<span className="value-label">{powerPrefLabels[prefs.powerPref - 1]}</span></label>
         <PowerSlider value={prefs.powerPref} onChange={handlePrefChange} />
         <div id="specZoneSummary">
           <h4>YOUR SPEC ZONE</h4>

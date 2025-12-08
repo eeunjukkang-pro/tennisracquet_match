@@ -45,7 +45,7 @@ input, textarea {
 
 #controls h3 { margin: 0 0 0.1rem 0; font-size: 1.2rem; color: #343a40; }
 #controls p { font-size: 0.75rem; color: #6c757d; margin: 0 0 0.2rem 0; }
-#controls label { font-size: 0.75rem; font-weight: 600; color: #495057; display: flex; justify-content: space-between; align-items: center; margin-top: 0.55rem; /* Reduced by 30% from 0.8rem */ margin-bottom: 0; }
+#controls label { font-size: 0.75rem; font-weight: 600; color: #495057; display: flex; justify-content: space-between; align-items: center; margin-top: 0.55rem; /* Reduced by 30% from 0.8rem */ margin-bottom: 0; text-transform: uppercase; }
 #controls .value-label { font-weight: 400; color: #343333; background-color: #e0e0e0; padding: 0.2rem 0.5rem; border-radius: 4px; }
 
 .segmented-control {
