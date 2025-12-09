@@ -143,40 +143,35 @@ const BRAND_LOGOS = {
 };
 
 const RacketComparison = ({ rackets = [], onExit, chartRect, specRanges }) => {
-  const [selectedSpecKey, setSelectedSpecKey] = useState(null);
-  const specRowRefs = useRef({});
+  const [selectedCell, setSelectedCell] = useState(null);
+  const [pulsingCell, setPulsingCell] = useState(null); // For animation
+  const chartSectionRef = useRef(null); // To scroll to the chart
 
+  // Scroll to chart when a cell is selected
   useEffect(() => {
-    console.log(`useEffect triggered for spec: ${selectedSpecKey}`);
-    if (selectedSpecKey && specRowRefs.current[selectedSpecKey]) {
-      console.log('Ref found, scrolling to:', specRowRefs.current[selectedSpecKey]);
-      specRowRefs.current[selectedSpecKey].scrollIntoView({
+    if (selectedCell && chartSectionRef.current) {
+      chartSectionRef.current.scrollIntoView({
         behavior: 'smooth',
-        block: 'center',
+        block: 'start',
       });
-    } else {
-      console.log('Ref not found for key:', selectedSpecKey);
     }
-  }, [selectedSpecKey]);
+  }, [selectedCell]);
+  
+  const handleCellClick = (specKey, racketId) => {
+    const isSameCell = selectedCell && selectedCell.specKey === specKey && selectedCell.racketId === racketId;
 
-  if (!rackets || rackets.length === 0) return null;
-
-  const handleRadarClick = (e) => {
-    if (e.points.length > 0) {
-      let pointIndex = e.points[0].pointNumber;
-      
-      // Handle the closed loop: the last point is the same as the first.
-      if (pointIndex === specs.length) {
-        pointIndex = 0;
-      }
-
-      if (pointIndex < specs.length) {
-        const key = specs[pointIndex].key;
-        console.log(`Clicked point index: ${pointIndex}, setting spec key to: ${key}`);
-        setSelectedSpecKey(prev => prev === key ? null : key);
-      }
+    if (isSameCell) {
+      setSelectedCell(null); // Deselect if clicking the same cell
+      setPulsingCell(null);
+    } else {
+      const newSelection = { specKey, racketId };
+      setSelectedCell(newSelection);
+      setPulsingCell(newSelection); // Trigger pulse effect
+      setTimeout(() => setPulsingCell(null), 500); // End pulse effect
     }
   };
+
+  if (!rackets || rackets.length === 0) return null;
 
   const specs = [
     { label: "Price", key: "price_num", suffix: " $" },
@@ -187,14 +182,29 @@ const RacketComparison = ({ rackets = [], onExit, chartRect, specRanges }) => {
     { label: "Power Level", key: "power_lv_num", suffix: "" },
     { label: "Length", key: "length_in", suffix: " in" },
   ];
+  
+  const showRackets = rackets.slice(0, 3);
+
+  const handleRadarClick = (e) => {
+    if (e.points.length > 0) {
+      const point = e.points[0];
+      let pointIndex = point.pointNumber;
+      
+      const racketIndex = Math.floor(point.curveNumber / 2);
+      const clickedRacket = showRackets[racketIndex];
+      if (!clickedRacket) return;
+
+      if (pointIndex === specs.length) pointIndex = 0;
+
+      if (pointIndex < specs.length) {
+        const key = specs[pointIndex].key;
+        handleCellClick(key, clickedRacket.id);
+      }
+    }
+  };
 
   const comparisonStyle = chartRect
-    ? {
-        top: `${chartRect.top}px`,
-        left: `${chartRect.left}px`,
-        width: `${chartRect.width}px`,
-        height: `${chartRect.height}px`,
-      }
+    ? { top: `${chartRect.top}px`, left: `${chartRect.left}px`, width: `${chartRect.width}px`, height: `${chartRect.height}px` }
     : {};
 
   const getTextColorForBackground = (hexColor) => {
@@ -206,41 +216,18 @@ const RacketComparison = ({ rackets = [], onExit, chartRect, specRanges }) => {
     return yiq >= 128 ? "#000000" : "#ffffff";
   };
 
-  // ✅ 브랜드 컬러를 연하게 만드는 헬퍼
-  const lightenHex = (hex, amount = 0.18) => {
-    if (!hex || hex[0] !== "#" || hex.length !== 7) return "#f5f5f5";
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    const mix = (c) => Math.round(c + (255 - c) * amount);
-    const rr = mix(r).toString(16).padStart(2, "0");
-    const gg = mix(g).toString(16).padStart(2, "0");
-    const bb = mix(b).toString(16).padStart(2, "0");
-    return `#${rr}${gg}${bb}`;
-  };
-
-  const showRackets = rackets.slice(0, 3);
   const headerColsClass = showRackets.length >= 3 ? "three" : "two";
-
-  // Radar chart data (safe normalization)
   const radarIndicators = specs.map((s) => s.label);
-
-  const handleSpecRowClick = (key) => {
-    setSelectedSpecKey(prev => (prev === key ? null : key));
-  };
 
   const radarTraces = showRackets.flatMap((r) => {
     const brandColor = BRAND_COLORS[r.brand] || BRAND_COLORS.Default;
     const valuesWithRaw = specs.map((s) => {
       const v = Number(r[s.key]);
       const range = specRanges?.[s.key];
-
       if (!range || Number.isNaN(v)) return { normalized: 0, raw: v, label: s.label, suffix: s.suffix || '' };
-
       const min = Number(range.min ?? 0);
       const max = Number(range.max ?? 1);
       const denom = max - min;
-
       const nv = (denom <= 0) ? 0 : (v - min) / denom;
       return { normalized: Math.max(0, Math.min(1, nv)), raw: v, label: s.label, suffix: s.suffix || '' };
     });
@@ -249,44 +236,24 @@ const RacketComparison = ({ rackets = [], onExit, chartRect, specRanges }) => {
     const theta = [...radarIndicators, radarIndicators[0]];
     const textVals = [...valuesWithRaw.map(v => `${v.label}: ${v.raw}${v.suffix}`), `${valuesWithRaw[0].label}: ${valuesWithRaw[0].raw}${valuesWithRaw[0].suffix}`];
     
-    const selectedSpecIndex = selectedSpecKey ? specs.findIndex(s => s.key === selectedSpecKey) : -1;
-    const markerSizes = new Array(rVals.length).fill(8);
-    if (selectedSpecIndex !== -1) {
-      markerSizes[selectedSpecIndex] = 16;
-      if (selectedSpecIndex === 0) {
-        markerSizes[specs.length] = 16;
-      }
+    const markerSizes = new Array(rVals.length).fill(8); // Default size
+    if (selectedCell && selectedCell.racketId === r.id) {
+        const selectedSpecIndex = specs.findIndex(s => s.key === selectedCell.specKey);
+        if (selectedSpecIndex !== -1) {
+            markerSizes[selectedSpecIndex] = 16; // Selected size
+            if (selectedSpecIndex === 0) markerSizes[specs.length] = 16;
+        }
+    }
+    if (pulsingCell && pulsingCell.racketId === r.id) {
+        const pulsingSpecIndex = specs.findIndex(s => s.key === pulsingCell.specKey);
+        if (pulsingSpecIndex !== -1) {
+            markerSizes[pulsingSpecIndex] = 24; // Pulse size
+            if (pulsingSpecIndex === 0) markerSizes[specs.length] = 24;
+        }
     }
 
-    // Main trace for lines and fill (no hover)
-    const mainTrace = {
-      type: "scatterpolar",
-      r: rVals,
-      theta,
-      fill: "none",
-      name: `${r.brand} ${r.model_name}`,
-      line: { color: brandColor, width: 2 },
-      hoverinfo: 'none',
-      pointerevents: 'none',
-    };
-
-    // Hover trace for points and tooltips
-    const hoverTrace = {
-      type: "scatterpolar",
-      r: rVals,
-      theta,
-      mode: 'markers',
-      name: `${r.brand} ${r.model_name}`,
-      text: textVals,
-      hovertemplate: '%{text}<extra></extra>',
-      hoverinfo: 'text',
-      marker: {
-        color: brandColor,
-        size: markerSizes,
-      },
-      classname: `trace-hover-${r.id}`
-    };
-    
+    const mainTrace = { type: "scatterpolar", r: rVals, theta, fill: "none", name: `${r.brand} ${r.model_name}`, line: { color: brandColor, width: 2 }, hoverinfo: 'none', pointerevents: 'none' };
+    const hoverTrace = { type: "scatterpolar", r: rVals, theta, mode: 'markers', name: `${r.brand} ${r.model_name}`, text: textVals, hovertemplate: '%{text}<extra></extra>', hoverinfo: 'text', marker: { color: brandColor, size: markerSizes }, classname: `trace-hover-${r.id}` };
     return [mainTrace, hoverTrace];
   });
 
@@ -294,56 +261,29 @@ const RacketComparison = ({ rackets = [], onExit, chartRect, specRanges }) => {
     showlegend: false,
     margin: { t: 40, r: 10, b: 40, l: 10 },
     paper_bgcolor: "#ffffff",
-    polar: {
-      bgcolor: "#ffffff",
-      radialaxis: {
-        visible: true,
-        range: [0, 1],
-        gridcolor: "#e9ecef",
-        tickfont: { size: 9 },
-      },
-      angularaxis: {
-        gridcolor: "#e9ecef",
-        tickfont: { size: 10 },
-      },
-    },
-    dragmode: false, // Disable rotation
-    hovermode: 'closest', // Enable hover on closest point
+    polar: { bgcolor: "#ffffff", radialaxis: { visible: true, range: [0, 1], gridcolor: "#e9ecef", tickfont: { size: 9 } }, angularaxis: { gridcolor: "#e9ecef", tickfont: { size: 10 } } },
+    dragmode: false,
+    hovermode: 'closest',
   };
 
-  // ✅ 선택 개수에 맞춘 테이블 그리드
-  const colStyle = {
-    gridTemplateColumns: `120px repeat(${showRackets.length}, 1fr)`,
-  };
+  const colStyle = { gridTemplateColumns: `120px repeat(${showRackets.length}, 1fr)` };
 
   return (
     <div id="comparison-container" style={comparisonStyle}>
       <div className="comparison-header">
         <h4>RACQUET COMPARISON</h4>
-        <button onClick={onExit} className="comparison-back-button close-button">
-        </button>
+        <button onClick={onExit} className="comparison-back-button close-button"></button>
       </div>
 
       <div className="comparison-content-split">
-        {/* 1) 컬러/로고 카드: 그래프 위 */}
         <div className={`comparison-racket-headers ${headerColsClass}`}>
           {showRackets.map((r) => {
             const brandColor = BRAND_COLORS[r.brand] || BRAND_COLORS.Default;
             const textColor = getTextColorForBackground(brandColor);
-
             return (
-              <div
-                key={r.id}
-                className="racket-header-item color-card"
-                style={{
-                  "--brand-color": brandColor,
-                  "--brand-text-color": textColor,
-                }}
-              >
+              <div key={r.id} className="racket-header-item color-card" style={{ "--brand-color": brandColor, "--brand-text-color": textColor }}>
                 <div className="header-logo-container">
-                  {BRAND_LOGOS[r.brand] ? (
-                    <img src={BRAND_LOGOS[r.brand]} alt={`${r.brand} logo`} />
-                  ) : null}
+                  {BRAND_LOGOS[r.brand] ? <img src={BRAND_LOGOS[r.brand]} alt={`${r.brand} logo`} /> : null}
                 </div>
                 <div className="header-brand-info">
                   <div className="header-brand-name">{r.brand}</div>
@@ -354,79 +294,46 @@ const RacketComparison = ({ rackets = [], onExit, chartRect, specRanges }) => {
           })}
         </div>
 
-        {/* 2) Radar chart */}
-        <div className="chart-section">
-          <Plot
-            data={radarTraces}
-            layout={radarLayout}
-            config={{ displayModeBar: false, responsive: true, scrollZoom: false }}
-            style={{ width: "100%", height: "400px" }}
-            useResizeHandler
-            onClick={handleRadarClick}
-          />
+        <div className="chart-section" ref={chartSectionRef}>
+          <Plot data={radarTraces} layout={radarLayout} config={{ displayModeBar: false, responsive: true, scrollZoom: false }} style={{ width: "100%", height: "400px" }} useResizeHandler onClick={handleRadarClick} />
         </div>
 
-        {/* 3) Specs table (no brand-name header) + long vertical color fills */}
-<div className="table-section">
-  <div className="specs-table-container band-cols">
-    {/* ✅ 세로로 긴 브랜드 컬러 fill 레이어 (텍스트 아래) */}
-    <div className="brand-fill-layer" style={colStyle} aria-hidden="true">
-      <div className="label-band" />
-      {showRackets.map((r) => {
-        const brandColor = BRAND_COLORS[r.brand] || BRAND_COLORS.Default;
-        return (
-          <div
-            key={`fill-${r.id}`}
-            className="brand-fill"
-            style={{ backgroundColor: brandColor }}
-          />
-        );
-      })}
-    </div>
-
-    {/* ✅ 브랜드명 헤더 제거하고 스펙 rows만 */}
-    <div className="specs-table-body">
-      {/* New Header Row for Brand and Model Names */}
-      <div className="specs-table-header" style={colStyle}>
-        <div className="spec-label"></div> {/* Empty corner for alignment */}
-        {showRackets.map((r) => (
-          <div key={r.id} className="spec-value brand-model-header">
-            <b>{r.brand}</b><br/>{r.model_name}
-          </div>
-        ))}
-      </div>
-
-      {specs.map((s) => (
-        <div 
-          key={s.key} 
-          className={`specs-table-row ${s.key === selectedSpecKey ? 'active-spec' : ''}`} 
-          style={colStyle}
-                  ref={(el) => (specRowRefs.current[s.key] = el)}
-                  onClick={() => handleSpecRowClick(s.key)}
-                >
-          <div className="spec-label">{s.label}</div>
-
-          {showRackets.map((r) => {
-            const v = r[s.key];
-            const display =
-              v == null || Number.isNaN(v) ? "N/A" : `${v}${s.suffix ?? ""}`;
-
-            return (
-              <div
-                key={`${r.id}-${s.key}`}
-                className="spec-value"
-              >
-                {display}
+        <div className="table-section">
+          <div className="specs-table-container band-cols">
+            <div className="brand-fill-layer" style={colStyle} aria-hidden="true">
+              <div className="label-band" />
+              {showRackets.map((r) => {
+                const brandColor = BRAND_COLORS[r.brand] || BRAND_COLORS.Default;
+                return <div key={`fill-${r.id}`} className="brand-fill" style={{ backgroundColor: brandColor }} />;
+              })}
+            </div>
+            <div className="specs-table-body">
+              <div className="specs-table-header" style={colStyle}>
+                <div className="spec-label"></div>
+                {showRackets.map((r) => (
+                  <div key={r.id} className="spec-value brand-model-header">
+                    <b>{r.brand}</b><br/>{r.model_name}
+                  </div>
+                ))}
               </div>
-            );
-          })}
+              {specs.map((s) => (
+                <div key={s.key} className="specs-table-row" style={colStyle}>
+                  <div className="spec-label">{s.label}</div>
+                  {showRackets.map((r) => {
+                    const v = r[s.key];
+                    const display = v == null || Number.isNaN(v) ? "N/A" : `${v}${s.suffix ?? ""}`;
+                    const isCellSelected = selectedCell && selectedCell.specKey === s.key && selectedCell.racketId === r.id;
+                    return (
+                      <div key={`${r.id}-${s.key}`} className={`spec-value ${isCellSelected ? 'active-cell' : ''}`} onClick={() => handleCellClick(s.key, r.id)}>
+                        {display}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      ))}
-    </div>
-  </div>
-</div>
-
-
       </div>
     </div>
   );
